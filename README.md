@@ -1,0 +1,1 @@
+This is my first cocos2d project, which adds to my experience and makes me more familiar with the use of cocos2d

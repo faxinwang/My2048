@@ -23,15 +23,18 @@ bool My2048::init()
     }
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 
+	//添加点击事件
 	auto touchListener = EventListenerTouchOneByOne::create();
 	touchListener->onTouchBegan = CC_CALLBACK_2(My2048::onTouchBegan, this);
 	touchListener->onTouchEnded = CC_CALLBACK_2(My2048::onTouchEnded, this);
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener,this);
-
+	
+	//添加键盘事件
 	auto keyboardEvent = EventListenerKeyboard::create();
 	keyboardEvent->onKeyPressed = CC_CALLBACK_2(My2048::onKeyPressed,this);
 	_eventDispatcher->addEventListenerWithFixedPriority(keyboardEvent, 1);
 
+	//显示最高得分
 	srand(time(0));
 	auto label = CCLabelTTF::create("MaxScore: ", "fonts/arial.ttf", 28);//font size 24
 	label->setAnchorPoint(ccp(0,0));
@@ -43,6 +46,7 @@ bool My2048::init()
 	_label_maxScore->setPosition(20 + label->getContentSize().width, label->getPositionY());
 	this->addChild(_label_maxScore);
 	
+	//显示当前得分
 	label = CCLabelTTF::create("Score: ", "fonts/arial.ttf", 25); //font size 20
 	label->setAnchorPoint(ccp(0, 0));
 	label->setPosition(20, _label_maxScore->getPositionY() - 40);
@@ -52,24 +56,27 @@ bool My2048::init()
 	_label_curScore->setPosition(20+label->getContentSize().width, label->getPositionY());
 	this->addChild(_label_curScore);
 
-	initTable(4, 4);
-	startGame();
+	
+	initTable(5, 4); //初始化背景 5行4列
+	startGame();    //开始游戏
 
     return true;
 }
 
-
+//根据给定参数创建游戏界面
 void My2048::initTable(int row,int col){
 	_row = row;
 	_col = col;
-	Color4B bgcolor = Color4B(187, 173, 160, 255);
+	Color4B bgcolor = Color4B(187, 173, 160, 255); //背景方格的颜色
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	Vec2 origin = Director::getInstance()->getVisibleOrigin();
-	cardSize = visibleSize.width / (col+1);
-	const int gap = 10;
+	cardSize = visibleSize.width / (col+1); //根据列数计算合适大小的方块尺寸
+	const int gap = 10; //方块与方块之间的间隔
 	int x, y=30;
+
+	//生成tabel,并计算table中各个方块的位置
 	for (int i = 0; i < row; ++i) {
-		x = 16;
+		x = 16;//左边空16个像素
 		for (int j = 0; j < col; ++j) {
 			auto card = Card::createCard(cardSize, cardSize);
 			card->setAnchorPoint(ccp(0,0));
@@ -83,6 +90,7 @@ void My2048::initTable(int row,int col){
 	}
 }
 
+//在table上随机找两个位置添加两个卡片，数字分别为2或4
 void My2048::startGame() {
 	int tx = rand() % _row;
 	int ty = rand() % _col;
@@ -92,6 +100,7 @@ void My2048::startGame() {
 	this->addChild(_cards[tx][ty]);
 
 	int tx2, ty2;
+	//用循环是为了避免随机找到的两个位置是一个位置
 	do {
 		tx2 = rand() % _row;
 		ty2 = rand() % _col;
@@ -114,8 +123,9 @@ void My2048::onTouchEnded(Touch* touch, Event* event) {
 	_diffx = _startx - pos.x;
 	_diffy = _starty - pos.y;
 	const int SLIDE_DIST = 10;
+	//X轴上的分量大于Y轴上的分量，则为左右滑动，否则为上下滑动
 	if (abs(_diffx) > abs(_diffy)) {
-		if (abs(_diffx) < SLIDE_DIST) return; //not leng enought to slide
+		if (abs(_diffx) < SLIDE_DIST) return; //滑动的距离不够长的话，视为没有滑动
 		if (_diffx > 0 ) { // from right to left
 			moveLeft();
 		}
@@ -124,7 +134,7 @@ void My2048::onTouchEnded(Touch* touch, Event* event) {
 		}
 	}
 	else {
-		if (abs(_diffy) < SLIDE_DIST) return; //not leng enought to slide
+		if (abs(_diffy) < SLIDE_DIST) return; //滑动距离不够长，视为未滑动
 		if (_diffy > 0) { //from high place to low place
 			moveDown();
 		}
@@ -134,6 +144,7 @@ void My2048::onTouchEnded(Touch* touch, Event* event) {
 	}
 }
 
+//用键盘的上下左右箭头控制滑动
 void My2048::onKeyPressed(EventKeyboard::KeyCode keyCode, Event* event) {
 
 	if (keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW) {
@@ -150,49 +161,73 @@ void My2048::onKeyPressed(EventKeyboard::KeyCode keyCode, Event* event) {
 	}
 }
 
+
+//将table上[fx,fy]位置上的卡片移动到 [tx,ty]位置上去，如果目标位置上有卡片，说明两卡片数字相等
 bool My2048::moveTo(int fx,int fy, int tx, int ty) {
 	if (fx==tx && fy==ty) return false;
 	auto from = _cards[fx][fy];
 	auto to = _cards[tx][ty];
 
+/* for debug
 	if (from == 0) {
 		log(" (%d, %d) ", fx, fy);
 		return false;
 	}
-
+*/
+	//如果目标位置上有卡票，说明两卡片可以合并
 	if (to) {
-		if (from->getNum() != to->getNum()) { log("two number are different");  return false; }
-		this->addScore(from->getNum() * 2);
+	//	if (from->getNum() != to->getNum()) { log("two number are different");  return false; } //for debug
+		this->addScore(from->getNum() * 2); //增加得分，分值为两个卡片上的数字之和
 		auto move = MoveTo::create(0.2, to->getPosition());
 		auto fade = FadeOut::create(0.2);
 		auto scale = ScaleTo::create(0.2, 1.5);
+
+		//fade动作和scale动作同时进行
 		auto spawn = Spawn::create(
 			fade,
 			scale,
 			NULL
 		); 
 	//	from->setAnchorPoint(ccp(0.5, 0.5));
+
 		auto seq = Sequence::create(
-				move,
-			//	fade,
-				spawn,
-				CCCallFunc::create(CC_CALLBACK_0(Card::doubleNum,to)),
-				CCCallFunc::create(CC_CALLBACK_0(Card::removeFromParent, from)),
+				move, //卡票先移动到目标位置
+				spawn,  //然后边放大边淡出
+				CCCallFunc::create(CC_CALLBACK_0(Card::doubleNum,to)), //然后让目标位置的卡片分数翻倍
+				CCCallFunc::create(CC_CALLBACK_0(Card::removeFromParent, from)), //然后移动的卡片从游戏界面中删除
 				NULL);
 		from->runAction(seq);
-		_cards[fx][fy] = nullptr;
+		_cards[fx][fy] = nullptr; //将from位置置空值
 	}
+	//如果目标位置上没有卡片，说明只需要将from位置的卡片移动到to位置
 	else {
 		to = _bgCards[tx][ty];
 		auto move = MoveTo::create(0.2, to->getPosition());
 		from->runAction(move);
 		_cards[tx][ty] = from;
-		_cards[fx][fy] = nullptr;
+		_cards[fx][fy] = nullptr;  //将from位置置空值
 	}
 	return true;
 }
 
 
+/*
+方块的滑动逻辑:
+* 由于四个方向上的滑动逻辑都是相同的，所以这里就只以往左滑动为例说一下滑动的逻辑实现。
+* 由于每一行的滑动逻辑和第一行是完全一样的，所以只以第一行的滑动逻辑为例进行讲解。
+* 往左移动的时候，首先处理[0,0]位置，处理方法如下：
+*	1.在该方块右边找一个数字不为0的方块，如果找到了，就进行下面的操作。否则不进行任何操作
+*   2.判断当前要处理的位置[0,0]上是否有方块。
+*		2.1如果没有方块，则将找到的方块移动到当前待处理的位置[0,0].
+*		2.2如果有方块，则判断找到的方块的数字和当前待处理位置[0,0]上的数字是否相同。
+*			2.2.1如果两个位置上方块的数字相同，则调用上面的moveTo函数将找到的方块移动到当前待处理的位置[0,0]上,
+*				 并修改相应的循环变量，使待处理位置变为下一个要处理的位置[0,1]，避免连续的三个2变成8等类似的情况发生。
+*			2.2.2如果两个位置上的方块的数字不同，则将找到的方块移动到当前待处理的方块[0,0]右边的一个位置[0,1]上
+*				(也可以不做任何处理,因为循环继续进行的时候自然会处理到后面的每一个位置)
+*	3.处理完第一个位置后，循环变量自增指向后面一个待处理的位置，处理逻辑与第一个一样。
+* 
+*  总结：不管往哪个方向移动，逻辑都是一样的，都是首先考虑移动方向上最前面的方块，然后在后面找方块来跟它合并或仅仅移动到当前位置。
+*/
 void My2048::moveLeft() {
 	log("\n move Left \n");
 	for (int r = 0; r < _row; ++r) {
@@ -204,6 +239,7 @@ void My2048::moveLeft() {
 				}
 				else if (_cards[r][c]->getNum() == _cards[r][k]->getNum()) {
 					moveTo(r, k, r, c);
+					++c;
 				}
 				else {
 					if (++c != k) {
@@ -222,7 +258,6 @@ void My2048::moveLeft() {
 	}
 }// move left
 
-
 void My2048::moveRight() {
 	log("\n move Right \n");
 	for (int r = 0; r < _row; ++r) {
@@ -234,6 +269,7 @@ void My2048::moveRight() {
 				}
 				else if (_cards[r][c]->getNum() == _cards[r][k]->getNum()) {
 					moveTo(r, k, r, c);
+					--c;
 				}
 				else {
 					if (--c != k) {
@@ -253,7 +289,6 @@ void My2048::moveRight() {
 	}
 } // move right
 
-
 void My2048::moveUp() {
 	log("\n move Up \n");
 	for (int c = 0; c<_col; ++c) {
@@ -265,6 +300,7 @@ void My2048::moveUp() {
 				}
 				else if(_cards[k][c]->getNum() == _cards[r][c]->getNum()){
 					moveTo(k, c, r, c);
+					--r;
 				}
 				else {
 					if (--r != k) {
@@ -295,6 +331,7 @@ void My2048::moveDown() {
 				}
 				else if (_cards[r][c]->getNum() == _cards[k][c]->getNum()) {
 					moveTo(k, c, r, c);
+					++r;
 				}
 				else {
 					if (++r != k) {
@@ -314,6 +351,9 @@ void My2048::moveDown() {
 	}
 } // move down
 
+
+//检查游戏是否结束，当且仅当所有位置都填满了数字并且没有两个相邻位置上的数字相等时游戏结束。
+//也就是再也无法移动的时候游戏结束
 bool My2048::checkGameOver() {
 	bool isGameOver = true;
 	for (int r = 0; r < _row; ++r) {
@@ -338,18 +378,22 @@ bool My2048::checkGameOver() {
 	return isGameOver;
 }
 
+
+//游戏结束
 void My2048::gameOver() {
-	if (_maxScore < _curScore) _maxScore = _curScore;
-	_curScore = 0;
+	if (_maxScore < _curScore) _maxScore = _curScore; //更新最高得分
+	_curScore = 0;		//更新当前得分
 	My2048 * game = this;
 	log("\nGameOver!\n");
 	
+	//让所有卡片都移出到窗体外面去，然后从游戏中删除
 	for (int r = 0; r < _row; ++r) {
 		for (int c = 0; c < _col; ++c) {
 			if (_cards[r][c]) {
 				_cards[r][c]->runAction(
 					Sequence::create(
 //						EaseOut::create(
+							//目标位置是根据下标随意计算出来的，目的是移出游戏界面
 							MoveTo::create(1.5, ccp(((r+1) * 15)*((c+2) * 10), ((c+2)* 15)*((1	+2) * 10))),
 //						2),
 						CCCallFuncN::create(CC_CALLBACK_0(Card::removeFromParent, _cards[r][c])),
@@ -362,6 +406,11 @@ void My2048::gameOver() {
 	//Director::getInstance()->replaceScene(TransitionJumpZoom::create(2, My2048::createScene()));
 }
 
+/*
+1.累计得分。
+2.将新的得分更新显示到label上
+3.执行一个显示加分的动画
+*/
 void My2048::addScore(int add) {
 	_curScore += add;
 	_label_curScore->setString(String::createWithFormat("%d", _curScore)->getCString());
@@ -375,6 +424,8 @@ void My2048::addScore(int add) {
 	label->setPosition(_label_curScore->getPositionX()+20, _label_curScore->getPositionY()+30);
 	label->setColor(Color3B(125,250,146));
 	this->addChild(label);
+
+	//同时执行移动，放大，淡出得动作。
 	auto spawn = Spawn::create(
 		MoveBy::create(2, ccp(10, 35)),
 		ScaleBy::create(2, 2),
@@ -382,22 +433,20 @@ void My2048::addScore(int add) {
 		NULL);
 	label->runAction(
 		Sequence::create(
-			spawn,
-			CCCallFuncN::create(CC_CALLBACK_0(LabelTTF::removeFromParent, label)),
+			spawn, //执行动画动作，
+			CCCallFuncN::create(CC_CALLBACK_0(LabelTTF::removeFromParent, label)), //然后从游戏中删除。
 			NULL)
 	);
 }
 
-
+//在给定位置添加卡片，以3:7的比例随机分配数字2或者4
 void My2048::addCard(int x,int y) {
 	auto card = Card::createCard(cardSize, cardSize);
 	if (rand() % 10 > 7) {
 		card->setNum(4);
-	//	this->addScore(4);
 	}
 	else {
 		card->setNum(2);
-	//	this->addScore(2);
 	}
 	card->setPosition(_bgCards[x][y]->getPosition());
 	_cards[x][y] = card;

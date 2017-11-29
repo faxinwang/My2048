@@ -1,3 +1,4 @@
+bin
 cocos2d
 proj.android
 proj.android-studio
@@ -5,3 +6,6 @@ proj.ios_mac
 proj.linux
 proj.win32/Debug.win32
 proj.win32/Release.win32
+*.db
+*.cd
+*.opendb
