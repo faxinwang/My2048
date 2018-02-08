@@ -36,14 +36,16 @@ bool My2048::init()
 
 	//显示最高得分
 	srand(time(0));
+	_curScore = 0;
+	_maxScore = CCUserDefault::getInstance()->getIntegerForKey("MaxScore",0); //读取用户数据
 	auto label = CCLabelTTF::create("MaxScore: ", "fonts/arial.ttf", 28);//font size 24
 	label->setAnchorPoint(ccp(0,0));
 	label->setPosition(20, visibleSize.height - 40);
 	this->addChild(label);
-	_maxScore = _curScore = 0;
 	_label_maxScore = CCLabelTTF::create("0", "fonts/arial.ttf", 28);
 	_label_maxScore->setAnchorPoint(ccp(0, 0));
 	_label_maxScore->setPosition(20 + label->getContentSize().width, label->getPositionY());
+	_label_maxScore->setString(String::createWithFormat("%d", _maxScore)->getCString());
 	this->addChild(_label_maxScore);
 	
 	//显示当前得分
@@ -55,7 +57,6 @@ bool My2048::init()
 	_label_curScore->setAnchorPoint(ccp(0, 0));
 	_label_curScore->setPosition(20+label->getContentSize().width, label->getPositionY());
 	this->addChild(_label_curScore);
-
 	
 	initTable(5, 4); //初始化背景 5行4列
 	startGame();    //开始游戏
@@ -381,7 +382,9 @@ bool My2048::checkGameOver() {
 
 //游戏结束
 void My2048::gameOver() {
-	if (_maxScore < _curScore) _maxScore = _curScore; //更新最高得分
+	if (_maxScore < _curScore) {
+		_maxScore = _curScore; //更新最高得分
+	}
 	_curScore = 0;		//更新当前得分
 	My2048 * game = this;
 	log("\nGameOver!\n");
@@ -417,6 +420,8 @@ void My2048::addScore(int add) {
 	if (_curScore > _maxScore) {
 		_maxScore = _curScore;
 		_label_maxScore->setString(String::createWithFormat("%d",_maxScore)->getCString());
+		CCUserDefault::getInstance()->setIntegerForKey("MaxScore", _maxScore);
+		CCUserDefault::getInstance()->flush();
 	}
 	auto label = LabelTTF::create();
 	label->setString(String::createWithFormat("+%d", add)->getCString());
@@ -442,7 +447,7 @@ void My2048::addScore(int add) {
 //在给定位置添加卡片，以3:7的比例随机分配数字2或者4
 void My2048::addCard(int x,int y) {
 	auto card = Card::createCard(cardSize, cardSize);
-	if (rand() % 10 > 7) {
+	if (rand() % 10 >= 7) {
 		card->setNum(4);
 	}
 	else {

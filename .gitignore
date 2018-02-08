@@ -9,3 +9,6 @@ proj.win32/Release.win32
 *.db
 *.cd
 *.opendb
+*.tlog
+*.vs
+*.suo
